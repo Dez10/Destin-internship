@@ -127,7 +127,7 @@ const HotCollections = () => {
                         <Link to={`/explore/${collection.id}`}>
                           <h4>{collection.title}</h4>
                         </Link>
-                        <span>ERC-{collection.nftId}</span>
+                        <span>ERC-{collection.code}</span>
                       </div>
                     </div>
                   </SwiperSlide>
