@@ -1,13 +1,146 @@
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { useParams, Link, useLocation } from "react-router-dom";
+import axios from "axios";
 import EthImage from "../images/ethereum.svg";
-import { Link } from "react-router-dom";
 import AuthorImage from "../images/author_thumbnail.jpg";
 import nftImage from "../images/nftImage.jpg";
 
 const ItemDetails = () => {
+  const { nftId } = useParams();
+  const location = useLocation();
+  const [item, setItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Try to get item data from location state (passed from HotCollections)
+  const itemFromState = location.state?.itemData;
+
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
+    
+    // If we have item data from state, use it
+    if (itemFromState) {
+      console.log("Item data from state:", itemFromState);
+      console.log("Available properties:", Object.keys(itemFromState));
+      console.log("Price field:", itemFromState.price);
+      console.log("Cost field:", itemFromState.cost);
+      console.log("Value field:", itemFromState.value);
+      console.log("Author name:", itemFromState.authorName);
+      console.log("Likes:", itemFromState.likes);
+      console.log("Views:", itemFromState.views);
+      setItem(itemFromState);
+      setLoading(false);
+      return;
+    }
+    
+    // Otherwise try to fetch from multiple APIs to find the item
+    if (nftId) {
+      const fetchFromMultipleAPIs = async () => {
+        try {
+          console.log("Fetching item with nftId:", nftId);
+          
+          // Try to fetch from available working APIs
+          const apiPromises = [
+            axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/hotCollections'),
+            axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/newItems'),
+            axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/explore')
+          ];
+          
+          const responses = await Promise.allSettled(apiPromises);
+          let foundItem = null;
+          
+          // Search through all successful API responses
+          for (const response of responses) {
+            if (response.status === 'fulfilled' && response.value.data) {
+              const items = Array.isArray(response.value.data) ? response.value.data : [response.value.data];
+              foundItem = items.find(item => 
+                item.nftId && item.nftId.toString() === nftId.toString()
+              );
+              if (foundItem) {
+                console.log("Found item:", foundItem);
+                break;
+              }
+            }
+          }
+          
+          if (foundItem) {
+            setItem(foundItem);
+          } else {
+            console.error("NFT not found in any API");
+            setError("NFT not found");
+          }
+          setLoading(false);
+        } catch (err) {
+          console.error("Error fetching NFT from multiple APIs:", err);
+          setError("Failed to fetch NFT details");
+          setLoading(false);
+        }
+      };
+      
+      fetchFromMultipleAPIs();
+    } else {
+      setError("No NFT ID provided");
+      setLoading(false);
+    }
+  }, [nftId, itemFromState]);
+
+  if (loading) {
+    return (
+      <div id="wrapper">
+        <div className="no-bottom no-top" id="content">
+          <div id="top"></div>
+          <section aria-label="section" className="mt90 sm-mt-0">
+            <div className="container">
+              <div className="row">
+                <div className="col-md-12 text-center">
+                  <h2>Loading item details...</h2>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div id="wrapper">
+        <div className="no-bottom no-top" id="content">
+          <div id="top"></div>
+          <section aria-label="section" className="mt90 sm-mt-0">
+            <div className="container">
+              <div className="row">
+                <div className="col-md-12 text-center">
+                  <h2>Error loading item</h2>
+                  <p>{error}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  if (!item) {
+    return (
+      <div id="wrapper">
+        <div className="no-bottom no-top" id="content">
+          <div id="top"></div>
+          <section aria-label="section" className="mt90 sm-mt-0">
+            <div className="container">
+              <div className="row">
+                <div className="col-md-12 text-center">
+                  <h2>Item not found</h2>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div id="wrapper">
@@ -18,42 +151,48 @@ const ItemDetails = () => {
             <div className="row">
               <div className="col-md-6 text-center">
                 <img
-                  src={nftImage}
+                  src={item.nftImage || nftImage}
                   className="img-fluid img-rounded mb-sm-30 nft-image"
-                  alt=""
+                  alt={item.title}
+                  onError={(e) => { e.target.src = nftImage }}
                 />
               </div>
               <div className="col-md-6">
                 <div className="item_info">
-                  <h2>Rainbow Style #194</h2>
+                  <h2>{item.title}</h2>
 
                   <div className="item_info_counts">
                     <div className="item_info_views">
                       <i className="fa fa-eye"></i>
-                      100
+                      {item.views || item.viewCount || 0}
                     </div>
                     <div className="item_info_like">
                       <i className="fa fa-heart"></i>
-                      74
+                      {item.likes || item.likeCount || item.hearts || 0}
                     </div>
                   </div>
                   <p>
-                    doloremque laudantium, totam rem aperiam, eaque ipsa quae ab
-                    illo inventore veritatis et quasi architecto beatae vitae
-                    dicta sunt explicabo.
+                    {item.description || item.about || "This is a beautiful NFT from the collection. Explore the details and consider adding it to your collection."}
                   </p>
                   <div className="d-flex flex-row">
                     <div className="mr40">
                       <h6>Owner</h6>
                       <div className="item_author">
                         <div className="author_list_pp">
-                          <Link to="/author">
-                            <img className="lazy" src={AuthorImage} alt="" />
+                          <Link to={`/author/${item.authorId}`}>
+                            <img 
+                              className="lazy" 
+                              src={item.authorImage || AuthorImage} 
+                              alt={item.title}
+                              onError={(e) => { e.target.src = AuthorImage }}
+                            />
                             <i className="fa fa-check"></i>
                           </Link>
                         </div>
                         <div className="author_list_info">
-                          <Link to="/author">Monica Lucas</Link>
+                          <Link to={`/author/${item.authorId}`}>
+                            {item.authorName || item.ownerName || item.creator || "Owner"}
+                          </Link>
                         </div>
                       </div>
                     </div>
@@ -64,13 +203,20 @@ const ItemDetails = () => {
                       <h6>Creator</h6>
                       <div className="item_author">
                         <div className="author_list_pp">
-                          <Link to="/author">
-                            <img className="lazy" src={AuthorImage} alt="" />
+                          <Link to={`/author/${item.authorId}`}>
+                            <img 
+                              className="lazy" 
+                              src={item.authorImage || AuthorImage} 
+                              alt={item.title}
+                              onError={(e) => { e.target.src = AuthorImage }}
+                            />
                             <i className="fa fa-check"></i>
                           </Link>
                         </div>
                         <div className="author_list_info">
-                          <Link to="/author">Monica Lucas</Link>
+                          <Link to={`/author/${item.authorId}`}>
+                            {item.authorName || item.creatorName || item.creator || "Creator"}
+                          </Link>
                         </div>
                       </div>
                     </div>
@@ -78,7 +224,7 @@ const ItemDetails = () => {
                     <h6>Price</h6>
                     <div className="nft-item-price">
                       <img src={EthImage} alt="" />
-                      <span>1.85</span>
+                      <span>{item.price || item.cost || item.value || "0.00"}</span>
                     </div>
                   </div>
                 </div>
@@ -92,3 +238,8 @@ const ItemDetails = () => {
 };
 
 export default ItemDetails;
+
+
+
+
+

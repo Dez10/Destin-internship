@@ -97,41 +97,52 @@ const HotCollections = () => {
                   </SwiperSlide>
                 ))
               ) : (
-                collections.map((collection) => (
-                  <SwiperSlide key={collection.id}>
-                    <div className="nft_coll">
-                      <div className="nft_wrap">
-                        <Link to={`/item-details/${collection.nftId}`}>
-                          <img 
-                            src={collection.nftImage || nftImage} 
-                            className="lazy img-fluid" 
-                            alt={collection.title} 
-                          />
-                        </Link>
+                collections.map((collection) => {
+                  console.log('Collection data:', collection); // Log each collection to verify fields
+                  console.log('Collection properties:', Object.keys(collection)); // Show all available properties
+                  return (
+                    <SwiperSlide key={collection.id}>
+                      <div className="nft_coll">
+                        <div className="nft_wrap">
+                          <Link to={`/item-details/${collection.nftId}`}>
+                            <img 
+                              src={collection.nftImage || nftImage} 
+                              className="lazy img-fluid" 
+                              alt={collection.title} 
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = nftImage;
+                              }}
+                            />
+                          </Link>
+                        </div>
+                        <div className="nft_coll_pp">
+                          <Link 
+                            to={`/item-details/${collection.nftId}`}
+                            state={{ itemData: collection }}
+                          >
+                            <img 
+                              className="lazy pp-coll" 
+                              src={collection.authorImage || AuthorImage} 
+                              alt={collection.title}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = AuthorImage;
+                              }}
+                            />
+                          </Link>
+                          <i className="fa fa-check"></i>
+                        </div>
+                        <div className="nft_coll_info">
+                          <Link to={`/explore/${collection.id}`}>
+                            <h4>{collection.title}</h4>
+                          </Link>
+                          <span>ERC-{collection.code}</span>
+                        </div>
                       </div>
-                      <div className="nft_coll_pp">
-                        <Link to={`/author/${collection.id}`}>
-                          <img 
-                            className="lazy pp-coll" 
-                            src={collection.authorImage || AuthorImage} 
-                            alt={collection.title}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = AuthorImage;
-                            }}
-                          />
-                        </Link>
-                        <i className="fa fa-check"></i>
-                      </div>
-                      <div className="nft_coll_info">
-                        <Link to={`/explore/${collection.id}`}>
-                          <h4>{collection.title}</h4>
-                        </Link>
-                        <span>ERC-{collection.code}</span>
-                      </div>
-                    </div>
-                  </SwiperSlide>
-                ))
+                    </SwiperSlide>
+                  );
+                })
               )}
             </Swiper>
           </div>
@@ -142,6 +153,9 @@ const HotCollections = () => {
 };
 
 export default HotCollections;
+
+
+
 
 
 
