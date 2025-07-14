@@ -10,67 +10,52 @@ const ExploreItems = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState("");
-  const [displayedItems, setDisplayedItems] = useState(8); // Show 8 items initially
+  const [displayedItems, setDisplayedItems] = useState(8);
 
   useEffect(() => {
     const fetchItems = async () => {
       try {
         let response;
         
-        // First try the correct API endpoint with filter support
         try {
-          console.log("Attempting to fetch explore items...");
-          
           let url = categoryId 
             ? `https://us-central1-nft-cloud-functions.cloudfunctions.net/explore/${categoryId}` 
             : `https://us-central1-nft-cloud-functions.cloudfunctions.net/explore`;
           
-          // Add filter parameter if one is selected
           if (filter) {
             url += `?filter=${filter}`;
           }
           
           response = await axios.get(url, { timeout: 5000 });
-          console.log("Successfully fetched from explore API:", response.data);
           
         } catch (exploreError) {
-          console.log("explore API not available, using fallback APIs");
-          console.log("Error details:", exploreError.message);
-          
-          // Fallback to working APIs
           if (categoryId) {
-            // If there's a category ID, we'll need to filter later or use a different approach
             response = await axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/hotCollections');
           } else {
-            // Use hotCollections as fallback for general explore
             response = await axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/hotCollections');
           }
         }
         
-        console.log("Explore items:", response.data);
-        console.log("First item structure:", response.data[0]); // Log first item to see data structure
         setItems(response.data);
-        setDisplayedItems(8); // Reset to show 8 items initially
+        setDisplayedItems(8);
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching explore items:", err);
         setError(err.message);
         setLoading(false);
       }
     };
 
     fetchItems();
-  }, [categoryId, filter]); // Add filter to dependency array
+  }, [categoryId, filter]);
 
   const handleFilterChange = (e) => {
     setFilter(e.target.value);
-    setLoading(true); // Show loading state while fetching filtered data
-    setDisplayedItems(8); // Reset to 8 items when filter changes
-    // The useEffect will automatically trigger with the new filter value
+    setLoading(true);
+    setDisplayedItems(8);
   };
 
   const handleLoadMore = () => {
-    setDisplayedItems(prevCount => prevCount + 4); // Add 4 more items
+    setDisplayedItems(prevCount => prevCount + 4);
   };
 
   if (loading) {

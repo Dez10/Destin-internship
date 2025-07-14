@@ -38,11 +38,9 @@ const HotCollections = () => {
     const fetchCollections = async () => {
       try {
         const response = await axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/hotCollections');
-        console.log('API Response:', response.data);
         setCollections(response.data);
         setLoading(false);
       } catch (err) {
-        console.error('Fetch Error:', err);
         setError(err.message);
         setLoading(false);
       }
@@ -97,10 +95,7 @@ const HotCollections = () => {
                   </SwiperSlide>
                 ))
               ) : (
-                collections.map((collection) => {
-                  console.log('Collection data:', collection); // Log each collection to verify fields
-                  console.log('Collection properties:', Object.keys(collection)); // Show all available properties
-                  return (
+                collections.map((collection) => (
                     <SwiperSlide key={collection.id}>
                       <div className="nft_coll">
                         <div className="nft_wrap">
@@ -141,8 +136,7 @@ const HotCollections = () => {
                         </div>
                       </div>
                     </SwiperSlide>
-                  );
-                })
+                ))
               )}
             </Swiper>
           </div>

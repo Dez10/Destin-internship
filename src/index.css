@@ -10,3 +10,27 @@
 @import "./css/styles/style.css";
 @import "./css/colors/scheme-01.css";
 @import "./css/styles/coloring.css";
+
+/* Follow Button Styles */
+.btn-main.btn-following {
+  background-color: #28a745 !important;
+  border-color: #28a745 !important;
+  color: white !important;
+}
+
+.btn-main.btn-following:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+}
+
+.btn-main.btn-following:hover::after {
+  content: "Unfollow";
+}
+
+.btn-main.btn-following:hover .follow-text {
+  display: none;
+}
+
+.btn-main {
+  transition: all 0.3s ease;
+}
