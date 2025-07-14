@@ -9,6 +9,7 @@ const ItemDetails = () => {
   const { nftId } = useParams();
   const location = useLocation();
   const [item, setItem] = useState(null);
+  const [authorName, setAuthorName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -18,18 +19,14 @@ const ItemDetails = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
     
-    // If we have item data from state, use it
     if (itemFromState) {
-      console.log("Item data from state:", itemFromState);
-      console.log("Available properties:", Object.keys(itemFromState));
-      console.log("Price field:", itemFromState.price);
-      console.log("Cost field:", itemFromState.cost);
-      console.log("Value field:", itemFromState.value);
-      console.log("Author name:", itemFromState.authorName);
-      console.log("Likes:", itemFromState.likes);
-      console.log("Views:", itemFromState.views);
       setItem(itemFromState);
-      setLoading(false);
+      
+      if (itemFromState.authorId) {
+        fetchAuthorName(itemFromState.authorId);
+      } else {
+        setLoading(false);
+      }
       return;
     }
     
@@ -37,9 +34,6 @@ const ItemDetails = () => {
     if (nftId) {
       const fetchFromMultipleAPIs = async () => {
         try {
-          console.log("Fetching item with nftId:", nftId);
-          
-          // Try to fetch from available working APIs
           const apiPromises = [
             axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/hotCollections'),
             axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/newItems'),
@@ -49,7 +43,6 @@ const ItemDetails = () => {
           const responses = await Promise.allSettled(apiPromises);
           let foundItem = null;
           
-          // Search through all successful API responses
           for (const response of responses) {
             if (response.status === 'fulfilled' && response.value.data) {
               const items = Array.isArray(response.value.data) ? response.value.data : [response.value.data];
@@ -57,7 +50,6 @@ const ItemDetails = () => {
                 item.nftId && item.nftId.toString() === nftId.toString()
               );
               if (foundItem) {
-                console.log("Found item:", foundItem);
                 break;
               }
             }
@@ -65,13 +57,16 @@ const ItemDetails = () => {
           
           if (foundItem) {
             setItem(foundItem);
+            if (foundItem.authorId) {
+              fetchAuthorName(foundItem.authorId);
+            } else {
+              setLoading(false);
+            }
           } else {
-            console.error("NFT not found in any API");
             setError("NFT not found");
+            setLoading(false);
           }
-          setLoading(false);
         } catch (err) {
-          console.error("Error fetching NFT from multiple APIs:", err);
           setError("Failed to fetch NFT details");
           setLoading(false);
         }
@@ -83,6 +78,21 @@ const ItemDetails = () => {
       setLoading(false);
     }
   }, [nftId, itemFromState]);
+
+  // Function to fetch author name from topSellers API
+  const fetchAuthorName = async (authorId) => {
+    try {
+      const response = await axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/topSellers');
+      const seller = response.data.find(seller => seller.authorId.toString() === authorId.toString());
+      if (seller) {
+        setAuthorName(seller.authorName);
+      }
+    } catch (err) {
+      // Handle error silently
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -191,7 +201,7 @@ const ItemDetails = () => {
                         </div>
                         <div className="author_list_info">
                           <Link to={`/author/${item.authorId}`}>
-                            {item.authorName || item.ownerName || item.creator || "Owner"}
+                            {authorName || item.authorName || item.ownerName || item.creator || "Owner"}
                           </Link>
                         </div>
                       </div>
@@ -215,7 +225,7 @@ const ItemDetails = () => {
                         </div>
                         <div className="author_list_info">
                           <Link to={`/author/${item.authorId}`}>
-                            {item.authorName || item.creatorName || item.creator || "Creator"}
+                            {authorName || item.authorName || item.creatorName || item.creator || "Creator"}
                           </Link>
                         </div>
                       </div>

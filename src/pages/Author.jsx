@@ -10,45 +10,79 @@ const Author = () => {
   const [author, setAuthor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
 
   useEffect(() => {
     window.scrollTo(0, 0);
     
-    // Only fetch if we have an authorId
     if (authorId) {
-      console.log("Fetching author with ID:", authorId);
-      
-      // Use your API endpoint
-      axios.get(`https://us-central1-nft-cloud-functions.cloudfunctions.net/author/${authorId}`)
+      axios.get(`https://us-central1-nft-cloud-functions.cloudfunctions.net/authors?author=${authorId}`)
         .then(response => {
-          console.log("Author API response:", response.data);
           setAuthor(response.data);
+          setFollowersCount(response.data.followers || 0);
+          const followingList = JSON.parse(localStorage.getItem('followingAuthors') || '[]');
+          setIsFollowing(followingList.includes(authorId));
           setLoading(false);
         })
         .catch(err => {
-          console.error("Error fetching author:", err);
           setError(err.message);
           setLoading(false);
         });
     } else {
       setLoading(false);
+    }      }, [authorId]);
+
+  const handleFollowClick = () => {
+    const followingList = JSON.parse(localStorage.getItem('followingAuthors') || '[]');
+    
+    if (isFollowing) {
+      const updatedList = followingList.filter(id => id !== authorId);
+      localStorage.setItem('followingAuthors', JSON.stringify(updatedList));
+      setIsFollowing(false);
+      setFollowersCount(prev => prev - 1);
+    } else {
+      const updatedList = [...followingList, authorId];
+      localStorage.setItem('followingAuthors', JSON.stringify(updatedList));
+      setIsFollowing(true);
+      setFollowersCount(prev => prev + 1);
     }
-  }, [authorId]);
+  };
 
-  // Debug log
-  console.log("Author component state:", { authorId, loading, error, author });
-
-  // Show loading state
   if (loading) {
     return (
       <div id="wrapper">
         <div className="no-bottom no-top" id="content">
           <div id="top"></div>
+          <section
+            id="profile_banner"
+            aria-label="section"
+            className="text-light"
+            data-bgimage="url(images/author_banner.jpg) top"
+            style={{ background: `url(${AuthorBanner}) top` }}
+          ></section>
           <section aria-label="section">
             <div className="container">
               <div className="row">
-                <div className="col-md-12 text-center">
-                  <h2>Loading author details...</h2>
+                <div className="col-md-12">
+                  <div className="d_profile de-flex">
+                    <div className="de-flex-col">
+                      <div className="profile_avatar">
+                        <div className="skeleton-box" style={{ width: "150px", height: "150px", borderRadius: "50%" }}></div>
+                        <div className="profile_name">
+                          <div className="skeleton-box" style={{ width: "200px", height: "30px", margin: "10px 0" }}></div>
+                          <div className="skeleton-box" style={{ width: "150px", height: "20px", margin: "5px 0" }}></div>
+                          <div className="skeleton-box" style={{ width: "300px", height: "16px", margin: "5px 0" }}></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="profile_follow de-flex">
+                      <div className="de-flex-col">
+                        <div className="skeleton-box" style={{ width: "120px", height: "20px", margin: "10px 0" }}></div>
+                        <div className="skeleton-box" style={{ width: "80px", height: "40px", borderRadius: "5px" }}></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -100,16 +134,14 @@ const Author = () => {
     );
   }
 
-  // Default data only if no authorId was provided (generic author page)
   const defaultData = {
     authorName: "Monica Lucas",
-    username: "monicaaaa",
-    wallet: "UDHUHWudhwd78wdt7edb32uidbwyuidhg7wUHIFUHWewiqdj87dy7",
+    tag: "monicaaaa",
+    address: "UDHUHWudhwd78wdt7edb32uidbwyuidhg7wUHIFUHWewiqdj87dy7",
     followers: 573,
     authorImage: AuthorImage
   };
 
-  // Use API data if available, otherwise use default
   const authorData = author || defaultData;
 
   return (
@@ -142,9 +174,9 @@ const Author = () => {
                       <div className="profile_name">
                         <h4>
                           {authorData.authorName}
-                          <span className="profile_username">@{authorData.username || authorData.authorName.toLowerCase()}</span>
+                          <span className="profile_username">@{authorData.tag || authorData.authorName.toLowerCase()}</span>
                           <span id="wallet" className="profile_wallet">
-                            {authorData.wallet || "Wallet address not available"}
+                            {authorData.address || "Wallet address not available"}
                           </span>
                           <button id="btn_copy" title="Copy Text">
                             Copy
@@ -155,10 +187,19 @@ const Author = () => {
                   </div>
                   <div className="profile_follow de-flex">
                     <div className="de-flex-col">
-                      <div className="profile_follower">{authorData.followers || 0} followers</div>
-                      <Link to="#" className="btn-main">
-                        Follow
-                      </Link>
+                      <div className="profile_follower">{followersCount} followers</div>
+                      <button 
+                        className={`btn-main ${isFollowing ? 'btn-following' : ''}`}
+                        onClick={handleFollowClick}
+                        title={isFollowing ? 'Click to unfollow' : 'Click to follow'}
+                        style={{
+                          position: 'relative',
+                        }}
+                      >
+                        <span style={{ position: 'relative', zIndex: 1 }}>
+                          {isFollowing ? 'Unfollow' : 'Follow'}
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -166,13 +207,27 @@ const Author = () => {
 
               <div className="col-md-12">
                 <div className="de_tab tab_simple">
-                  <AuthorItems authorId={authorId} />
+                  <AuthorItems authorId={authorId} authorData={author} />
                 </div>
               </div>
             </div>
           </div>
         </section>
       </div>
+      
+      <style>
+        {`
+          .btn-main::before,
+          .btn-main::after {
+            content: none !important;
+          }
+          
+          .btn-following::before,
+          .btn-following::after {
+            content: none !important;
+          }
+        `}
+      </style>
     </div>
   );
 };

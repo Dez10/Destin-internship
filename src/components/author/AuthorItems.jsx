@@ -1,60 +1,83 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import NFTItemSkeleton, { SkeletonStyles } from "../UI/NFTItemSkeleton";
 import AuthorImage from "../../images/author_thumbnail.jpg";
 import nftImage from "../../images/nftImage.jpg";
 
-const AuthorItems = ({ authorId }) => {
+const AuthorItems = ({ authorId, authorData: passedAuthorData }) => {
   const [items, setItems] = useState([]);
+  const [authorData, setAuthorData] = useState(passedAuthorData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Only fetch if we have an authorId
     if (authorId) {
-      console.log("Fetching items for author ID:", authorId);
-      
-      // Use your API endpoint
-      axios.get(`https://us-central1-nft-cloud-functions.cloudfunctions.net/authorItems/${authorId}`)
-        .then(response => {
-          console.log("Author items API response:", response.data);
-          setItems(response.data || []);
+      if (passedAuthorData) {
+        setAuthorData(passedAuthorData);
+        if (passedAuthorData.nftCollection && passedAuthorData.nftCollection.length > 0) {
+          setItems(passedAuthorData.nftCollection);
           setLoading(false);
-        })
-        .catch(err => {
-          console.error("Error fetching author items:", err);
-          setError(err.message);
-          setLoading(false);
-        });
+        } else {
+          fetchItemsOnly();
+        }
+      } else {
+        fetchAuthorData();
+      }
     } else {
       setLoading(false);
     }
-  }, [authorId]);
+  }, [authorId, passedAuthorData]);
 
-  // Debug log
-  console.log("AuthorItems component state:", { authorId, loading, error, items });
+  const fetchItemsOnly = async () => {
+    try {
+      const itemsResponse = await axios.get(
+        `https://us-central1-nft-cloud-functions.cloudfunctions.net/authorItems/${authorId}`
+      );
+      setItems(itemsResponse.data || []);
+      setLoading(false);
+    } catch (itemsError) {
+      setItems([]);
+      setLoading(false);
+    }
+  };
+  
+  const fetchAuthorData = async () => {
+    try {
+      const authorResponse = await axios.get(
+        `https://us-central1-nft-cloud-functions.cloudfunctions.net/authors?author=${authorId}`
+      );
+      setAuthorData(authorResponse.data);
+      
+      if (authorResponse.data.nftCollection && authorResponse.data.nftCollection.length > 0) {
+        setItems(authorResponse.data.nftCollection);
+      } else {
+        try {
+          const itemsResponse = await axios.get(
+            `https://us-central1-nft-cloud-functions.cloudfunctions.net/authorItems/${authorId}`
+          );
+          setItems(itemsResponse.data || []);
+        } catch (itemsError) {
+          setItems([]);
+        }
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
 
-  // Show loading state
   if (loading) {
     return (
       <div className="de_tab_content">
+        <SkeletonStyles />
         <div className="tab-1">
           <div className="row">
             {Array(8).fill(null).map((_, index) => (
-              <div className="col-lg-3 col-md-6 col-sm-6 col-xs-12" key={index}>
-                <div className="nft__item">
-                  <div className="author_list_pp">
-                    <div className="skeleton-box" style={{ width: "50px", height: "50px", borderRadius: "50%" }}></div>
-                  </div>
-                  <div className="nft__item_wrap">
-                    <div className="skeleton-box" style={{ height: "250px", width: "100%" }}></div>
-                  </div>
-                  <div className="nft__item_info">
-                    <div className="skeleton-box" style={{ width: "70%", height: "24px", marginBottom: "10px" }}></div>
-                    <div className="skeleton-box" style={{ width: "40%", height: "20px", marginBottom: "10px" }}></div>
-                    <div className="skeleton-box" style={{ width: "30%", height: "20px" }}></div>
-                  </div>
-                </div>
+              <div className="col-lg-3 col-md-6 col-sm-6 col-xs-12" key={`skeleton-${index}`}>
+                <NFTItemSkeleton />
               </div>
             ))}
           </div>
@@ -63,7 +86,6 @@ const AuthorItems = ({ authorId }) => {
     );
   }
 
-  // Show error state
   if (error) {
     return (
       <div className="de_tab_content">
@@ -78,7 +100,6 @@ const AuthorItems = ({ authorId }) => {
     );
   }
 
-  // If no items or empty array, show a message
   if (!items || items.length === 0) {
     return (
       <div className="de_tab_content">
@@ -93,20 +114,19 @@ const AuthorItems = ({ authorId }) => {
     );
   }
 
-  // If we have items, display them
   return (
     <div className="de_tab_content">
       <div className="tab-1">
         <div className="row">
-          {items.map((item, i) => ( // Added index parameter 'i'
+          {items.map((item, i) => (
             <div className="col-lg-3 col-md-6 col-sm-6 col-xs-12" key={item.id || `item-${i}`}>
               <div className="nft__item">
                 <div className="author_list_pp">
-                  <Link to={`/author/${item.authorId || authorId}`}>
+                  <Link to={`/author/${authorData?.authorId || authorId}`}>
                     <img 
                       className="lazy" 
-                      src={item.authorImage || AuthorImage} 
-                      alt={item.authorName || "Author"}
+                      src={authorData?.authorImage || AuthorImage} 
+                      alt={authorData?.authorName || "Author"}
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = AuthorImage;

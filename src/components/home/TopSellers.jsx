@@ -18,7 +18,6 @@ const TopSellers = () => {
         setSellers(response.data);
         setLoading(false);
       } catch (err) {
-        console.error("Fetch Error:", err);
         setError(err.message);
         setLoading(false);
       }
