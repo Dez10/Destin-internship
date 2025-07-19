@@ -13,52 +13,61 @@ const ItemDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Try to get item data from location state (passed from HotCollections)
   const itemFromState = location.state?.itemData;
+
+  const fetchAuthorName = async (authorId) => {
+    try {
+      const response = await axios.get(
+        `https://us-central1-nft-cloud-functions.cloudfunctions.net/authors?author=${authorId}`
+      );
+      
+      if (response.data && response.data.authorName) {
+        setAuthorName(response.data.authorName);
+      } else {
+        const sellersResponse = await axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/topSellers');
+        const seller = sellersResponse.data.find(seller => seller.authorId.toString() === authorId.toString());
+        if (seller) {
+          setAuthorName(seller.authorName);
+        }
+      }
+    } catch (err) {
+      try {
+        const sellersResponse = await axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/topSellers');
+        const seller = sellersResponse.data.find(seller => seller.authorId.toString() === authorId.toString());
+        if (seller) {
+          setAuthorName(seller.authorName);
+        }
+      } catch (fallbackErr) {
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
     
     if (itemFromState) {
-      setItem(itemFromState);
-      
-      if (itemFromState.authorId) {
-        fetchAuthorName(itemFromState.authorId);
-      } else {
-        setLoading(false);
-      }
+      setItem(itemFromState);        if (itemFromState.authorId || itemFromState.ownerId || itemFromState.creatorId) {
+          fetchAuthorName(itemFromState.authorId || itemFromState.ownerId || itemFromState.creatorId);
+        } else {
+          setLoading(false);
+        }
       return;
     }
-    
-    // Otherwise try to fetch from multiple APIs to find the item
+     
     if (nftId) {
-      const fetchFromMultipleAPIs = async () => {
+      const fetchItemDetails = async () => {
         try {
-          const apiPromises = [
-            axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/hotCollections'),
-            axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/newItems'),
-            axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/explore')
-          ];
+          const response = await axios.get(
+            `https://us-central1-nft-cloud-functions.cloudfunctions.net/itemDetails?nftId=${nftId}`
+          );
           
-          const responses = await Promise.allSettled(apiPromises);
-          let foundItem = null;
-          
-          for (const response of responses) {
-            if (response.status === 'fulfilled' && response.value.data) {
-              const items = Array.isArray(response.value.data) ? response.value.data : [response.value.data];
-              foundItem = items.find(item => 
-                item.nftId && item.nftId.toString() === nftId.toString()
-              );
-              if (foundItem) {
-                break;
-              }
-            }
-          }
-          
-          if (foundItem) {
-            setItem(foundItem);
-            if (foundItem.authorId) {
-              fetchAuthorName(foundItem.authorId);
+          if (response.data) {
+            setItem(response.data);
+            
+            if (response.data.authorId || response.data.ownerId || response.data.creatorId) {
+              fetchAuthorName(response.data.authorId || response.data.ownerId || response.data.creatorId);
             } else {
               setLoading(false);
             }
@@ -67,32 +76,56 @@ const ItemDetails = () => {
             setLoading(false);
           }
         } catch (err) {
-          setError("Failed to fetch NFT details");
-          setLoading(false);
+          const fallbackFetch = async () => {
+            try {
+              const apiPromises = [
+                axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/hotCollections'),
+                axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/newItems'),
+                axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/explore')
+              ];
+              
+              const responses = await Promise.allSettled(apiPromises);
+              let foundItem = null;
+              
+              for (const response of responses) {
+                if (response.status === 'fulfilled' && response.value.data) {
+                  const items = Array.isArray(response.value.data) ? response.value.data : [response.value.data];
+                  foundItem = items.find(item => 
+                    item.nftId && item.nftId.toString() === nftId.toString()
+                  );
+                  if (foundItem) {
+                    break;
+                  }
+                }
+              }
+              
+              if (foundItem) {
+                setItem(foundItem);
+                if (foundItem.authorId || foundItem.ownerId || foundItem.creatorId) {
+                  fetchAuthorName(foundItem.authorId || foundItem.ownerId || foundItem.creatorId);
+                } else {
+                  setLoading(false);
+                }
+              } else {
+                setError("NFT not found");
+                setLoading(false);
+              }
+            } catch (fallbackErr) {
+              setError("Failed to fetch NFT details");
+              setLoading(false);
+            }
+          };
+          
+          fallbackFetch();
         }
       };
       
-      fetchFromMultipleAPIs();
+      fetchItemDetails();
     } else {
       setError("No NFT ID provided");
       setLoading(false);
     }
   }, [nftId, itemFromState]);
-
-  // Function to fetch author name from topSellers API
-  const fetchAuthorName = async (authorId) => {
-    try {
-      const response = await axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/topSellers');
-      const seller = response.data.find(seller => seller.authorId.toString() === authorId.toString());
-      if (seller) {
-        setAuthorName(seller.authorName);
-      }
-    } catch (err) {
-      // Handle error silently
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -192,7 +225,7 @@ const ItemDetails = () => {
                           <Link to={`/author/${item.authorId}`}>
                             <img 
                               className="lazy" 
-                              src={item.authorImage || AuthorImage} 
+                              src={item.ownerImage || item.authorImage || AuthorImage} 
                               alt={item.title}
                               onError={(e) => { e.target.src = AuthorImage }}
                             />
@@ -201,7 +234,7 @@ const ItemDetails = () => {
                         </div>
                         <div className="author_list_info">
                           <Link to={`/author/${item.authorId}`}>
-                            {authorName || item.authorName || item.ownerName || item.creator || "Owner"}
+                            {authorName || item.ownerName || item.authorName || item.creator || "Owner"}
                           </Link>
                         </div>
                       </div>
@@ -213,10 +246,10 @@ const ItemDetails = () => {
                       <h6>Creator</h6>
                       <div className="item_author">
                         <div className="author_list_pp">
-                          <Link to={`/author/${item.authorId}`}>
+                          <Link to={`/author/${item.creatorId || item.authorId}`}>
                             <img 
                               className="lazy" 
-                              src={item.authorImage || AuthorImage} 
+                              src={item.creatorImage || item.authorImage || AuthorImage} 
                               alt={item.title}
                               onError={(e) => { e.target.src = AuthorImage }}
                             />
@@ -224,8 +257,8 @@ const ItemDetails = () => {
                           </Link>
                         </div>
                         <div className="author_list_info">
-                          <Link to={`/author/${item.authorId}`}>
-                            {authorName || item.authorName || item.creatorName || item.creator || "Creator"}
+                          <Link to={`/author/${item.creatorId || item.authorId}`}>
+                            {authorName || item.creatorName || item.authorName || item.creator || "Creator"}
                           </Link>
                         </div>
                       </div>
