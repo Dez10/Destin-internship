@@ -9,50 +9,17 @@ const ItemDetails = () => {
   const { nftId } = useParams();
   const location = useLocation();
   const [item, setItem] = useState(null);
-  const [authorName, setAuthorName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const itemFromState = location.state?.itemData;
 
-  const fetchAuthorName = async (authorId) => {
-    try {
-      const response = await axios.get(
-        `https://us-central1-nft-cloud-functions.cloudfunctions.net/authors?author=${authorId}`
-      );
-      
-      if (response.data && response.data.authorName) {
-        setAuthorName(response.data.authorName);
-      } else {
-        const sellersResponse = await axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/topSellers');
-        const seller = sellersResponse.data.find(seller => seller.authorId.toString() === authorId.toString());
-        if (seller) {
-          setAuthorName(seller.authorName);
-        }
-      }
-    } catch (err) {
-      try {
-        const sellersResponse = await axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/topSellers');
-        const seller = sellersResponse.data.find(seller => seller.authorId.toString() === authorId.toString());
-        if (seller) {
-          setAuthorName(seller.authorName);
-        }
-      } catch (fallbackErr) {
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     window.scrollTo(0, 0);
     
     if (itemFromState) {
-      setItem(itemFromState);        if (itemFromState.authorId || itemFromState.ownerId || itemFromState.creatorId) {
-          fetchAuthorName(itemFromState.authorId || itemFromState.ownerId || itemFromState.creatorId);
-        } else {
-          setLoading(false);
-        }
+      setItem(itemFromState);
+      setLoading(false);
       return;
     }
      
@@ -65,12 +32,7 @@ const ItemDetails = () => {
           
           if (response.data) {
             setItem(response.data);
-            
-            if (response.data.authorId || response.data.ownerId || response.data.creatorId) {
-              fetchAuthorName(response.data.authorId || response.data.ownerId || response.data.creatorId);
-            } else {
-              setLoading(false);
-            }
+            setLoading(false);
           } else {
             setError("NFT not found");
             setLoading(false);
@@ -101,11 +63,7 @@ const ItemDetails = () => {
               
               if (foundItem) {
                 setItem(foundItem);
-                if (foundItem.authorId || foundItem.ownerId || foundItem.creatorId) {
-                  fetchAuthorName(foundItem.authorId || foundItem.ownerId || foundItem.creatorId);
-                } else {
-                  setLoading(false);
-                }
+                setLoading(false);
               } else {
                 setError("NFT not found");
                 setLoading(false);
@@ -202,7 +160,7 @@ const ItemDetails = () => {
               </div>
               <div className="col-md-6">
                 <div className="item_info">
-                  <h2>{item.title}</h2>
+                  <h2>{item.title}{item.tag ? ` #${item.tag}` : ''}</h2>
 
                   <div className="item_info_counts">
                     <div className="item_info_views">
@@ -222,7 +180,7 @@ const ItemDetails = () => {
                       <h6>Owner</h6>
                       <div className="item_author">
                         <div className="author_list_pp">
-                          <Link to={`/author/${item.authorId}`}>
+                          <Link to={`/author/${item.ownerId || item.authorId}`}>
                             <img 
                               className="lazy" 
                               src={item.ownerImage || item.authorImage || AuthorImage} 
@@ -233,8 +191,8 @@ const ItemDetails = () => {
                           </Link>
                         </div>
                         <div className="author_list_info">
-                          <Link to={`/author/${item.authorId}`}>
-                            {authorName || item.ownerName || item.authorName || item.creator || "Owner"}
+                          <Link to={`/author/${item.ownerId || item.authorId}`}>
+                            {item.ownerName || item.authorName || "Owner"}
                           </Link>
                         </div>
                       </div>
@@ -258,7 +216,7 @@ const ItemDetails = () => {
                         </div>
                         <div className="author_list_info">
                           <Link to={`/author/${item.creatorId || item.authorId}`}>
-                            {authorName || item.creatorName || item.authorName || item.creator || "Creator"}
+                            {item.creatorName || item.authorName || "Creator"}
                           </Link>
                         </div>
                       </div>
