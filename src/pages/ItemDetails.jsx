@@ -25,7 +25,11 @@ const ItemDetails = () => {
         setAuthorName(response.data.authorName);
       } else {
         const sellersResponse = await axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/topSellers');
-        const seller = sellersResponse.data.find(seller => seller.authorId.toString() === authorId.toString());
+        const seller = sellersResponse.data.find(seller => 
+          seller.authorId.toString() === authorId.toString() ||
+          seller.ownerId?.toString() === authorId.toString() ||
+          seller.creatorId?.toString() === authorId.toString()
+        );
         if (seller) {
           setAuthorName(seller.authorName);
         }
@@ -33,7 +37,11 @@ const ItemDetails = () => {
     } catch (err) {
       try {
         const sellersResponse = await axios.get('https://us-central1-nft-cloud-functions.cloudfunctions.net/topSellers');
-        const seller = sellersResponse.data.find(seller => seller.authorId.toString() === authorId.toString());
+        const seller = sellersResponse.data.find(seller => 
+          seller.authorId.toString() === authorId.toString() ||
+          seller.ownerId?.toString() === authorId.toString() ||
+          seller.creatorId?.toString() === authorId.toString()
+        );
         if (seller) {
           setAuthorName(seller.authorName);
         }
@@ -202,7 +210,7 @@ const ItemDetails = () => {
               </div>
               <div className="col-md-6">
                 <div className="item_info">
-                  <h2>{item.title}</h2>
+                  <h2>{item.title}{item.tag ? ` #${item.tag}` : ''}</h2>
 
                   <div className="item_info_counts">
                     <div className="item_info_views">
@@ -222,7 +230,7 @@ const ItemDetails = () => {
                       <h6>Owner</h6>
                       <div className="item_author">
                         <div className="author_list_pp">
-                          <Link to={`/author/${item.authorId}`}>
+                          <Link to={`/author/${item.ownerId || item.authorId}`}>
                             <img 
                               className="lazy" 
                               src={item.ownerImage || item.authorImage || AuthorImage} 
@@ -233,7 +241,7 @@ const ItemDetails = () => {
                           </Link>
                         </div>
                         <div className="author_list_info">
-                          <Link to={`/author/${item.authorId}`}>
+                          <Link to={`/author/${item.ownerId || item.authorId}`}>
                             {authorName || item.ownerName || item.authorName || item.creator || "Owner"}
                           </Link>
                         </div>
