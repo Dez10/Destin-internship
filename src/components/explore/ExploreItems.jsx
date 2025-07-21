@@ -114,6 +114,7 @@ const ExploreItems = () => {
               e.preventDefault();
               handleLoadMore();
             }}
+            data-aos="fadeInUp"
           >
             Load more
           </Link>
